@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contador de Likes</title>
+    <link rel="stylesheet" href="https://cdn.rawgit.com/HubSpot/odometer/gh-pages/themes/odometer-theme-default.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: transparent;
+            margin: 0;
+        }
+
+        .counter-container {
+            text-align: center;
+            padding: 30px;
+            border-radius: 20px;
+            width: 320px;
+        }
+
+        /* Barra base */
+        .progress-bar-container {
+            position: relative;
+            width: 100%;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Barra animada */
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00f5ff, #7f00ff);
+            border-radius: 20px;
+            transition: width 0.5s ease;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Shine passando */
+        .progress-bar::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 50%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.35);
+            transform: skewX(-20deg);
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            0% {
+                left: -50%;
+            }
+
+            100% {
+                left: 120%;
+            }
+        }
+
+        /* Texto central */
+        .progress-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+        }
+
+        .title {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        /* Contador neon */
+        #like-counter {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 12px #00f5ff, 0 0 25px #7f00ff;
+        }
+
+        /* Pulse quando atualiza */
+        .pulse {
+            animation: pulse 0.4s ease;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.25);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* META BATIDA */
+        .goal-hit {
+            animation: shake 0.6s ease;
+            border: 2px solid gold;
+        }
+
+        @keyframes shake {
+            0% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-6px);
+            }
+
+            50% {
+                transform: translateX(6px);
+            }
+
+            75% {
+                transform: translateX(-4px);
+            }
+
+            100% {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="counter-container">
+        <!-- Barra de Progresso -->
+        <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
+            <div class="progress-content">
+                <!-- <div class="title">Meta de Like</div> -->
+                <div id="like-counter">0/100</div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Inclua o Odometer.js -->
+    <script src="https://cdn.rawgit.com/HubSpot/odometer/gh-pages/odometer.js"></script>
+    <script>
+        const apiKey = "AIzaSyCfYdJr8i8CdybGPKWlM1N9vGxcBsl5JYE";
+
+        initGoalLike();
+        async function initGoalLike() {
+
+            if (confirm("Deseja incluir uma nova configuração?")) {
+                localStorage.removeItem("videoId");
+                localStorage.removeItem("channel");
+                localStorage.removeItem("increment");
+                localStorage.removeItem("multiple");
+                localStorage.removeItem("goal");
+            }
+
+            if (!localStorage.getItem("channel") && !localStorage.getItem("videoId")) {
+                let url = prompt("Informe a url do canal ou da live");
+                youTubeUrlHandle(url);
+            }
+
+            if (!localStorage.getItem("goal")) {
+                goal = prompt("Informe a meta inicial");
+                localStorage.setItem("goal", goal)
+            }
+
+            if (!localStorage.getItem("increment")) {
+                increment = prompt("De quanto em quanto deseja aumentar a meta? 0 Para deixar desativado");
+                localStorage.setItem("increment", increment)
+            }
+
+            if (!localStorage.getItem("increment") || parseInt(localStorage.getItem("increment")) == 0) {
+                fillMultipleField()
+            }
+
+            function fillMultipleField() {
+                if (!localStorage.getItem("multiple") || parseFloat(localStorage.getItem("multiple")) < 1.1) {
+                    multiple = prompt("Ao atingir a meta deseja multiplicar por?(Informe valor acima de 1)");
+                    localStorage.setItem("multiple", multiple)
+                    fillMultipleField()
+                }
+            }
+
+            if (localStorage.getItem("channel")) {
+                await getUrlLastLive();
+            }
+
+
+            const url = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${localStorage.getItem("videoId")}&key=${apiKey}`;
+            var currentLikes = 0;
+            var goalLikes = parseInt(localStorage.getItem("goal"));
+            var multiple = parseInt(localStorage.getItem("multiple"));
+            var increment = parseInt(localStorage.getItem("increment"));
+
+
+            const likeCounter = document.getElementById('like-counter');
+            const progressBar = document.getElementById('progress-bar');
+            const goalText = document.querySelector('.goal');
+
+            likeCounter.innerHTML = `${currentLikes}/${goalLikes}`;
+
+            setInterval(() => atualizarLikes(url), 3000);
+            function atualizarLikes(url) {
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateCounter(parseInt(data.items[0].statistics.likeCount));
+                    })
+                    .catch(error => console.error("Erro ao buscar dados:", error));
+            }
+
+            // Função para atualizar o contador e a barra de progresso
+            let lastLikes = 0;
+
+            function updateCounter(currentLikes) {
+
+                // Atualiza contador
+                likeCounter.innerHTML = `${currentLikes}/${goalLikes}`;
+
+                // Barra progresso
+                let progressPercentage = (currentLikes / goalLikes) * 100;
+                progressBar.style.width = progressPercentage + "%";
+
+                // 🎉 Pulse quando aumenta like
+                if (currentLikes > lastLikes) {
+                    likeCounter.classList.add("pulse");
+
+                    setTimeout(() => {
+                        likeCounter.classList.remove("pulse");
+                    }, 400);
+                }
+
+                // 🔥 Quando chega perto da meta muda cor
+                if (progressPercentage >= 80) {
+                    progressBar.style.background =
+                        "linear-gradient(90deg, #ffcc00, #ff0066)";
+                }
+
+                // 🏆 META BATIDA
+                if (currentLikes >= goalLikes) {
+
+                    document.querySelector(".progress-bar-container")
+                        .classList.add("goal-hit");
+
+                    setTimeout(() => {
+                        document.querySelector(".progress-bar-container")
+                            .classList.remove("goal-hit");
+                    }, 800);
+
+                    // Atualiza meta
+                    if (increment > 0) {
+                        goalLikes += increment;
+                    } else {
+                        goalLikes = Math.floor(goalLikes * multiple);
+                    }
+
+                    // Reset barra cor
+                    progressBar.style.background =
+                        "linear-gradient(90deg, #00f5ff, #7f00ff)";
+                }
+
+                lastLikes = currentLikes;
+            }
+        }
+
+
+
+        async function getUrlLastLive() {
+            let channelId;
+            await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${localStorage.getItem("channel")}&key=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    channelId = data.items[0].id
+                })
+                .catch(error => console.error("Erro ao buscar dados:", error));
+
+            await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&eventType=live&key=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    localStorage.setItem("videoId", data.items[0].id.videoId)
+                })
+                .catch(error => console.error("Erro ao buscar dados:", error));
+        }
+
+        function youTubeUrlHandle(url) {
+            localStorage.removeItem("videoId");
+            localStorage.removeItem("channel");
+            if (url.includes("@")) {
+                localStorage.setItem("channel", getChannel(url))
+            } else if (url.includes("v=")) {
+                localStorage.setItem("videoId", getYouTubeVideoID(url))
+            } else if (url.includes("live")) {
+                localStorage.setItem("videoId", getLiveId(url))
+            }
+        }
+
+        function getYouTubeVideoID(url) {
+            const urlObj = new URL(url);
+            return urlObj.searchParams.get("v");
+        }
+
+        function getLiveId(url) {
+            const match = url.match(/live\/([\w-]+)/);
+            return match ? match[1] : null;
+        }
+
+        function getChannel(url) {
+            const match = url.match(/@([\w-]+)/);
+            return match ? match[0] : null;
+        }
+    </script>
+
+</body>
+
+</html>
